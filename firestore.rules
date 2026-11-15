@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function validId(s) { return s is string && s.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'); }
+    function validPlayer(p) {
+      return p is map && p.keys().hasAll(['id','name','buyins','final'])
+        && p.keys().hasOnly(['id','name','buyins','final'])
+        && validId(p.id) && p.name is string && p.name.size() > 0 && p.name.size() <= 40
+        && p.buyins is int && p.buyins >= 0 && p.buyins <= 100
+        && p.final is number && p.final >= 0 && p.final <= 20000;
+    }
+    function validPlayers(ps) {
+      return ps is list && ps.size() <= 10
+        && (ps.size() < 1 || validPlayer(ps[0]))
+        && (ps.size() < 2 || validPlayer(ps[1]))
+        && (ps.size() < 3 || validPlayer(ps[2]))
+        && (ps.size() < 4 || validPlayer(ps[3]))
+        && (ps.size() < 5 || validPlayer(ps[4]))
+        && (ps.size() < 6 || validPlayer(ps[5]))
+        && (ps.size() < 7 || validPlayer(ps[6]))
+        && (ps.size() < 8 || validPlayer(ps[7]))
+        && (ps.size() < 9 || validPlayer(ps[8]))
+        && (ps.size() < 10 || validPlayer(ps[9]));
+    }
+    function validEvent(e) {
+      return e is map && e.keys().hasAll(['id','at','label','before'])
+        && e.keys().hasOnly(['id','at','label','before'])
+        && validId(e.id) && e.at is number && e.at > 0
+        && e.label is string && e.label.size() <= 100
+        && validPlayers(e.before);
+    }
+    function validEvents(es) {
+      return es is list && es.size() <= 20
+        && (es.size() < 1 || validEvent(es[0]))
+        && (es.size() < 2 || validEvent(es[1]))
+        && (es.size() < 3 || validEvent(es[2]))
+        && (es.size() < 4 || validEvent(es[3]))
+        && (es.size() < 5 || validEvent(es[4]))
+        && (es.size() < 6 || validEvent(es[5]))
+        && (es.size() < 7 || validEvent(es[6]))
+        && (es.size() < 8 || validEvent(es[7]))
+        && (es.size() < 9 || validEvent(es[8]))
+        && (es.size() < 10 || validEvent(es[9]))
+        && (es.size() < 11 || validEvent(es[10]))
+        && (es.size() < 12 || validEvent(es[11]))
+        && (es.size() < 13 || validEvent(es[12]))
+        && (es.size() < 14 || validEvent(es[13]))
+        && (es.size() < 15 || validEvent(es[14]))
+        && (es.size() < 16 || validEvent(es[15]))
+        && (es.size() < 17 || validEvent(es[16]))
+        && (es.size() < 18 || validEvent(es[17]))
+        && (es.size() < 19 || validEvent(es[18]))
+        && (es.size() < 20 || validEvent(es[19]));
+    }
+    function validRoom(d) {
+      return d.keys().hasAll(['players','created','events'])
+        && d.keys().hasOnly(['players','created','events'])
+        && d.created is number && d.created > 0
+        && validPlayers(d.players) && validEvents(d.events);
+    }
+    match /rooms/{roomId} {
+      // Der lange, zufällige Einladungslink ist derzeit der Zugangsschlüssel.
+      // KEIN PIN-Schutz: wer die Runden-ID kennt, darf lesen und bearbeiten.
+      allow get: if signedIn() && validId(roomId);
+      allow create: if signedIn() && validId(roomId) && validRoom(request.resource.data)
+        && request.resource.data.events.size() == 0;
+      allow update: if signedIn() && validId(roomId) && validRoom(request.resource.data)
+        && request.resource.data.created == resource.data.created;
+      allow list, delete: if false;
+    }
+  }
+}
