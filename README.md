@@ -47,3 +47,7 @@ Bei sehr vielen betroffenen Abenden werden Änderungen in Blöcken vorgenommen u
 
 ## App-Icon auf iPhone und Android
 Die Version v12 enthält PNG-Icons für Android (192/512 px), Apple-Touch-Icon (180 px) und Favicon (32 px). Nach dem Hochladen auf GitHub Pages ggf. bereits installierte Startbildschirm-Verknüpfung entfernen und neu hinzufügen. iPhone: Safari > Teilen > Zum Home-Bildschirm. Android: Chrome > Menü > Zum Startbildschirm hinzufügen / App installieren. Die bestehende firebase-config.js beibehalten, falls bereits korrekt eingerichtet. Keine Firestore-Regeländerung nötig.
+
+
+## Version 17
+Die All-Time-Statistik ist ausschließlich auf der Startseite sichtbar. Die Excel-Einmalimport-Oberfläche wurde entfernt. Bereits importierte Ergebnisse bleiben erhalten. Die Firebase-Regeln aus Version 16 können unverändert bleiben.
