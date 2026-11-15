@@ -1,3 +1,13 @@
+# Poker-Kasse v11 – Einladung nur per Link
+
+Neue Runde erstellen, auf **Einladen** tippen und den vollständigen Link teilen. Empfänger öffnen den Link und gelangen automatisch in die Runde. Keine manuelle Runden-ID-Eingabe mehr. Die zufällige ID bleibt technisch im Link, weil sie die Runde identifiziert.
+
+Die globale All-Time-Statistik und Löschfunktionen aus v10 bleiben erhalten. Die Firestore-Regeln sind unverändert; für dieses reine Oberflächen-Update müssen sie nicht neu veröffentlicht werden.
+
+**Installation:** Die Dateien aus `poker-app/` in das GitHub-Repository hochladen und gleichnamige Dateien ersetzen. `firebase-config.js` enthält die vorhandene Konfiguration: vor dem Hochladen mit der funktionierenden GitHub-Datei abgleichen. Im privaten Browserfenster testen: Runde erstellen → Einladen → Link auf zweitem Gerät öffnen.
+
+**Sicherheit:** Jeder mit dem vollständigen Link kann die Runde bearbeiten.
+
 # Poker-Kasse v7 – Globale All-Time-Statistik
 
 Alle abgeschlossenen Abende aus **neuen Einladungslinks** werden in Firestore unter `results/{roomId}` gespeichert und gemeinsam ausgewertet. Die Abrechnung bleibt in `rooms/{roomId}`. Die globale Speicherung und der Rundenabschluss erfolgen in einer Transaktion. Ein Link kann nur einmal zur globalen Statistik beitragen. Für jeden neuen Abend einen neuen Link erstellen.
@@ -34,3 +44,6 @@ Beide Vorgänge ändern nur die globalen `results`-Dokumente, nicht die ursprün
 Nach dem Löschen eines Ergebnisses kann derselbe Link nicht erneut archiviert werden, weil die Runde bereits abgeschlossen ist; in der aktuellen Implementierung prüft die App nur das Vorhandensein des Ergebnisses, daher ist eine erneute Archivierung theoretisch möglich, falls die Runde nochmals ausgeglichen wird.
 Ohne Admin-Login kann jeder anonym angemeldete App-Nutzer die globale Statistik verändern.
 Bei sehr vielen betroffenen Abenden werden Änderungen in Blöcken vorgenommen und können bei Verbindungsabbruch teilweise abgeschlossen sein.
+
+## App-Icon auf iPhone und Android
+Die Version v12 enthält PNG-Icons für Android (192/512 px), Apple-Touch-Icon (180 px) und Favicon (32 px). Nach dem Hochladen auf GitHub Pages ggf. bereits installierte Startbildschirm-Verknüpfung entfernen und neu hinzufügen. iPhone: Safari > Teilen > Zum Home-Bildschirm. Android: Chrome > Menü > Zum Startbildschirm hinzufügen / App installieren. Die bestehende firebase-config.js beibehalten, falls bereits korrekt eingerichtet. Keine Firestore-Regeländerung nötig.
