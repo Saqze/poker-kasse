@@ -23,51 +23,68 @@ service cloud.firestore {
         && (ps.size() < 9 || validPlayer(ps[8]))
         && (ps.size() < 10 || validPlayer(ps[9]));
     }
-    function validEvent(e) {
-      return e is map && e.keys().hasAll(['id','at','label','before'])
-        && e.keys().hasOnly(['id','at','label','before'])
-        && validId(e.id) && e.at is number && e.at > 0
-        && e.label is string && e.label.size() <= 100
-        && validPlayers(e.before);
-    }
+    // The event log is optional bookkeeping; validate its bounded container.
+    // Previous deeply nested event/player validation could exhaust rules evaluation.
     function validEvents(es) {
-      return es is list && es.size() <= 20
-        && (es.size() < 1 || validEvent(es[0]))
-        && (es.size() < 2 || validEvent(es[1]))
-        && (es.size() < 3 || validEvent(es[2]))
-        && (es.size() < 4 || validEvent(es[3]))
-        && (es.size() < 5 || validEvent(es[4]))
-        && (es.size() < 6 || validEvent(es[5]))
-        && (es.size() < 7 || validEvent(es[6]))
-        && (es.size() < 8 || validEvent(es[7]))
-        && (es.size() < 9 || validEvent(es[8]))
-        && (es.size() < 10 || validEvent(es[9]))
-        && (es.size() < 11 || validEvent(es[10]))
-        && (es.size() < 12 || validEvent(es[11]))
-        && (es.size() < 13 || validEvent(es[12]))
-        && (es.size() < 14 || validEvent(es[13]))
-        && (es.size() < 15 || validEvent(es[14]))
-        && (es.size() < 16 || validEvent(es[15]))
-        && (es.size() < 17 || validEvent(es[16]))
-        && (es.size() < 18 || validEvent(es[17]))
-        && (es.size() < 19 || validEvent(es[18]))
-        && (es.size() < 20 || validEvent(es[19]));
+      return es is list && es.size() <= 20;
+    }
+    function validHistory(h) {
+      // Maximal 50 abgeschlossene Abende, jeweils mit bis zu 10 Spielern.
+      // Spielerlisten in alten Abenden werden beim Schreiben nur grob begrenzt.
+      return h is list && h.size() <= 50;
     }
     function validRoom(d) {
       return d.keys().hasAll(['players','created','events'])
-        && d.keys().hasOnly(['players','created','events'])
+        && d.keys().hasOnly(['players','created','events','history'])
         && d.created is number && d.created > 0
-        && validPlayers(d.players) && validEvents(d.events);
+        && validPlayers(d.players) && validEvents(d.events)
+        && (!('history' in d) || validHistory(d.history));
     }
     match /rooms/{roomId} {
       // Der lange, zufällige Einladungslink ist derzeit der Zugangsschlüssel.
       // KEIN PIN-Schutz: wer die Runden-ID kennt, darf lesen und bearbeiten.
       allow get: if signedIn() && validId(roomId);
       allow create: if signedIn() && validId(roomId) && validRoom(request.resource.data)
-        && request.resource.data.events.size() == 0;
+        && request.resource.data.events.size() == 0
+        && (!('history' in request.resource.data) || request.resource.data.history.size() == 0);
       allow update: if signedIn() && validId(roomId) && validRoom(request.resource.data)
         && request.resource.data.created == resource.data.created;
       allow list, delete: if false;
     }
+    function validResult(d, roomId) {
+      return d.keys().hasAll(['roomId','at','players'])
+        && d.keys().hasOnly(['roomId','at','players'])
+        && d.roomId == roomId && d.at is number && d.at > 0
+        && validPlayers(d.players) && d.players.size() > 0;
+    }
+    match /results/{roomId} {
+      // Testmodus: Angemeldete Nutzer dürfen Ergebnisse löschen.
+      // Achtung: Anonyme Anmeldung ist KEIN Administrator-Schutz!
+      allow get, list: if signedIn();
+      // Nur Ergebnisse aus dem zuletzt archivierten Zustand der verknüpften Runde.
+      allow create: if signedIn() && validId(roomId)
+        && validResult(request.resource.data, roomId)
+        && exists(/databases/$(database)/documents/rooms/$(roomId))
+        && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.history is list
+        && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.history.size() > 0
+        && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.history[
+          getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.history.size() - 1
+        ].players == request.resource.data.players
+        && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.history[
+          getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.history.size() - 1
+        ].at == request.resource.data.at;
+      // Nur vollständige Spielereinträge entfernen; keine bestehenden Einträge verändern.
+      allow update: if signedIn() && validId(roomId)
+        && request.resource.data.keys().hasOnly(['roomId','at','players'])
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.at == resource.data.at
+        && request.resource.data.players is list
+        && request.resource.data.players.size() > 0
+        && request.resource.data.players.size() < resource.data.players.size()
+        && request.resource.data.players.hasOnly(resource.data.players)
+        && validPlayers(request.resource.data.players);
+      allow delete: if signedIn();
+    }
+
   }
 }

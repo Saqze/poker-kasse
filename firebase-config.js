@@ -1,6 +1,6 @@
 // Firebase-Web-App-Konfiguration für Poker-Kasse
 export const firebaseConfig = {
-  apiKey: 'AIzaSyB30wOVuRntV2uNFkA4-L1zVgPf6Xxrm1U',
+  apiKey: 'AIzaSyB30w0VuRntV2uNFkA4-L1zVgPf6Xxrm1U',
   authDomain: 'poker-kasse.firebaseapp.com',
   projectId: 'poker-kasse',
   storageBucket: 'poker-kasse.firebasestorage.app',
