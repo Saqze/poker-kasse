@@ -57,6 +57,42 @@ service cloud.firestore {
         && d.roomId == roomId && d.at is number && d.at > 0
         && validPlayers(d.players) && d.players.size() > 0;
     }
+
+    function validLegacyPlayer(p) {
+      return p is map && p.keys().hasAll(['name','profitCents'])
+        && p.keys().hasOnly(['name','profitCents'])
+        && p.name is string && p.name.size() > 0 && p.name.size() <= 40
+        && p.profitCents is int && p.profitCents >= -2000000 && p.profitCents <= 2000000;
+    }
+    function validLegacyPlayers(ps) {
+      return ps is list && ps.size() > 0 && ps.size() <= 10
+        && (ps.size() < 1 || validLegacyPlayer(ps[0]))
+        && (ps.size() < 2 || validLegacyPlayer(ps[1]))
+        && (ps.size() < 3 || validLegacyPlayer(ps[2]))
+        && (ps.size() < 4 || validLegacyPlayer(ps[3]))
+        && (ps.size() < 5 || validLegacyPlayer(ps[4]))
+        && (ps.size() < 6 || validLegacyPlayer(ps[5]))
+        && (ps.size() < 7 || validLegacyPlayer(ps[6]))
+        && (ps.size() < 8 || validLegacyPlayer(ps[7]))
+        && (ps.size() < 9 || validLegacyPlayer(ps[8]))
+        && (ps.size() < 10 || validLegacyPlayer(ps[9]));
+    }
+    function legacyId(id) { return id in ["a225c96a-335b-5247-bccd-2dbf4d7ac059", "880e1b65-0f13-52ad-948c-629846a07a7b", "41d1ec91-7ff2-54ca-aea1-8246c3a5c305", "c40b79d1-7a49-5608-a7d0-8a1108725b9f", "eca97c82-5126-5dfa-891f-2fa753e5b4e4", "b0f928ce-9880-569e-aa09-bf83653d38b0", "a3bdf759-cc20-5938-b59c-79aa635c4442", "c8eb94e3-0d56-5302-8ba2-d73073b0878b", "5ab07b5f-b719-57e8-bb32-47834637d1f4", "e35a9e61-fe2f-5e37-aca4-9b5630927a94", "c5e4d29f-9f70-584c-bb0b-2b43ba87163e", "12ba94e9-eff3-5923-92f1-ce7566fadbb8", "d6a1bf1e-207b-5e9a-83b9-1403e0a4c97c"]; }
+    function validLegacyResult(d, id) {
+      return legacyId(id) && d.keys().hasAll(['roomId','at','players','label','source'])
+        && d.keys().hasOnly(['roomId','at','players','label','source'])
+        && d.roomId == id && d.source == 'legacy-2026'
+        && d.label is string && d.label.size() <= 50
+        && d.at is number && d.at > 0 && validLegacyPlayers(d.players);
+    }
+    match /imports/legacy-2026 {
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['done','count','at'])
+        && request.resource.data.done == true && request.resource.data.count == 13
+        && request.resource.data.at is number && request.resource.data.at > 0;
+      allow list, update, delete: if false;
+    }
+
     match /results/{roomId} {
       // Testmodus: Angemeldete Nutzer dürfen Ergebnisse löschen.
       // Achtung: Anonyme Anmeldung ist KEIN Administrator-Schutz!
@@ -73,6 +109,16 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.history[
           getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.history.size() - 1
         ].at == request.resource.data.at;
+      // Historischer Einmal-Import: 13 feste Dokument-IDs und ein dauerhaftes Import-Merkmal.
+      allow create: if signedIn() && validLegacyResult(request.resource.data, roomId)
+        && !exists(/databases/$(database)/documents/imports/legacy-2026)
+        && getAfter(/databases/$(database)/documents/imports/legacy-2026).data.done == true;
+      allow update: if signedIn() && resource.data.source == 'legacy-2026'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
+        && request.resource.data.players is list && request.resource.data.players.size() > 0
+        && request.resource.data.players.size() < resource.data.players.size()
+        && request.resource.data.players.hasOnly(resource.data.players)
+        && validLegacyPlayers(request.resource.data.players);
       // Nur vollständige Spielereinträge entfernen; keine bestehenden Einträge verändern.
       allow update: if signedIn() && validId(roomId)
         && request.resource.data.keys().hasOnly(['roomId','at','players'])
